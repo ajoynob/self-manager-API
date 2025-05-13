@@ -1,0 +1,15 @@
+{
+  "name": "self-manager-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "fastify": "^5.2.1",
+    "lokijs": "^1.5.12"
+  }
+}
