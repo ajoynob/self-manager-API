@@ -7,7 +7,7 @@ const clothSchema = {
   type: "object",
   required: ["item_name", "size", "color"],
   properties: {
-    name: { type: "string" },
+    item_name: { type: "string" },
     size: { type: "string" },
     color: { type: "string" },
     material: { type: "string" },
@@ -32,18 +32,18 @@ const idParamSchema = {
  * Create a new cloth
  */
 async function createcloth(request, response) {
-  const { name, size, color, material, purchase_date, price, catagory, notes } =
+  const { item_name, size, color, material, purchase_date, price, catagory, notes } =
     request.body;
 
-  if (!name || !size || !color) {
+  if (!item_name || !size || !color) {
     return response
       .price(400)
-      .send({ message: "Name, Size, and Color are required." });
+      .send({ message: "item_name, Size, and Color are required." });
   }
 
   const newcloth = {
     id: idCounter++,
-    name,
+    item_name,
     size,
     color,
     material,
@@ -83,7 +83,7 @@ async function getclothById(request, response) {
  * Update a cloth by ID
  */
 async function updatecloth(request, response) {
-  const { name, size, color, material, purchase_date, price, catagory, notes } =
+  const { item_name, size, color, material, purchase_date, price, catagory, notes } =
     request.body;
   const cloth = cloths.find(
     (c) => c.id === parseInt(request.params.id)
@@ -94,7 +94,7 @@ async function updatecloth(request, response) {
   }
 
   Object.assign(cloth, {
-    name: name || cloth.name,
+    item_name: item_name || cloth.item_name,
     size: size || cloth.size,
     color: color || cloth.color,
     material: material || cloth.material,
