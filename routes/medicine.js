@@ -7,7 +7,7 @@ const medicineSchema = {
   properties: {
     name: { type: "string" },
     dosage: { type: "string" },
-    frequency: { type: "string", format: "frequency" },
+    frequency: { type: "string" },
     start_date: { type: "string" },
     end_date: { type: "string" },
     notes: { type: "string" },

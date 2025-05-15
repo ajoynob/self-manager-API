@@ -7,7 +7,7 @@ const inventorSchema = {
   properties: {
     item_name: { type: "string" },
     description: { type: "string" },
-    quantity: { type: "string", format: "quantity" },
+    quantity: { type: "string" },
     price: { type: "string" },
     catagory: { type: "string" },
     supplier: { type: "string" },
