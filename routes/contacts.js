@@ -1,16 +1,4 @@
-const Loki = require("lokijs");
-
-const db = new Loki("sm.db", {
-  autoload: true,
-  autoloadCallback: loadDatabase,
-  autosave: true,
-  autosaveInterval: 4000,
-});
-
-
-function loadDatabase() {
-  console.log("Database loaded");
-}
+const dbHelper = require("../dbHelper");
 
 // Schemas for validation
 const contactSchema = {
@@ -34,22 +22,21 @@ const idParamSchema = {
   required: ["id"],
 };
 
-const contactsDb =  db.addCollection("contacts");
+const contactsDb = dbHelper("contacts");
 
 // Handlers
 async function createContact(request, reply) {
   const newContact = await contactsDb.insert(request.body);
-  db.saveDatabase();
   return reply.status(201).send(newContact);
 }
 
 async function getContacts(request, reply) {
-  const contacts = await contactsDb.find();
+  const contacts = await contactsDb.findAll();
   return reply.send(contacts);
 }
 
 async function getContactById(request, reply) {
-  const contact = await contactsDb.findOne({ $loki: parseInt(id) });
+  const contact = await contactsDb.findById(request.params.id);
   if (!contact) {
     return reply.status(404).send({ message: "Contact not found." });
   }
@@ -57,28 +44,19 @@ async function getContactById(request, reply) {
 }
 
 async function updateContact(request, reply) {
-
-  const doc = contactsDb.findOne({ $loki: parseInt(request.params.id) });
-    if (doc) {
-      Object.assign(doc, request.body);
-      contactsDb.update(doc);
-      db.saveDatabase();
-    }
-  if (!doc) {
+  const updatedContact = await contactsDb.update(
+    request.params.id,
+    request.body,
+  );
+  if (!updatedContact) {
     return reply.status(404).send({ message: "Contact not found." });
   }
-  return reply.send(doc);
+  return reply.send(updatedContact);
 }
 
 async function deleteContact(request, reply) {
-  // const numRemoved = await contactsDb.delete(request.params.id);
-  const doc = await contactsDb.findOne({ $loki: parseInt(request.params.id) });
-    if (doc) {
-      Object.assign(doc, request.body);
-      contactsDb.remove(doc);
-      db.saveDatabase();
-    }
-  if (!doc) {
+  const numRemoved = await contactsDb.delete(request.params.id);
+  if (numRemoved === 0) {
     return reply.status(404).send({ message: "Contact not found." });
   }
   return reply.status(204).send();

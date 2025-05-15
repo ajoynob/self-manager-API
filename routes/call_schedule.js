@@ -1,102 +1,86 @@
-// In-memory "database"
-let call_schedule = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const call_scheduleSchema = {
+  type: "object",
+  required: ["contact_id", "call_date", "call_time"],
+  properties: {
+    contact_id: { type: "string" },
+    call_date: { type: "string" },
+    call_time: { type: "string" },
+    call_purpose: { type: "string" },
+    repeat_interval: { type: "string" },
+    status: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const call_schedulesDb = dbHelper("call_schedules");
 
 // Handlers
+async function createcall_schedule(request, reply) {
+  const newcall_schedule = await call_schedulesDb.insert(request.body);
+  return reply.status(201).send(newcall_schedule);
+}
 
-/**
- * Create a new CallSchedule
- */
-async function createCallSchedule(request, response) {
-  const { contact_id, call_date, call_time, call_purpose, repeat_interval, status, notes } = request.body;
+async function getcall_schedules(request, reply) {
+  const call_schedules = await call_schedulesDb.findAll();
+  return reply.send(call_schedules);
+}
 
-  if (!contact_id || !call_date || !call_time) {
-    return response
-      .status(400)
-      .send({ message: "Contact ID, Call date, and Call time are required." });
+async function getcall_scheduleById(request, reply) {
+  const call_schedule = await call_schedulesDb.findById(request.params.id);
+  if (!call_schedule) {
+    return reply.status(404).send({ message: "call_schedule not found." });
   }
-
-  const newCallSchedule = {
-    id: idCounter++,
-    contact_id,
-    call_date,
-    call_time,
-    call_purpose,
-    repeat_interval,
-    status, 
-    notes,
-  };
-
-  call_schedule.push(newCallSchedule);
-  return response.status(201).send(newCallSchedule);
+  return reply.send(call_schedule);
 }
 
-/**
- * Get all call_schedule
- */
-async function getCallSchedule(request, response) {
-  return response.send(call_schedule);
-}
-
-/**
- * Get a single CallSchedule by ID
- */
-async function getCallScheduleById(request, response) {
-  const CallSchedule = call_schedule.find((c) => c.id === parseInt(request.params.id));
-
-  if (!CallSchedule) {
-    return response.status(404).send({ message: "Call Schedule not found." });
-  }
-
-  return response.send(CallSchedule);
-}
-
-/**
- * Update a CallSchedule by ID
- */
-async function updateCallSchedule(request, response) {
-  const { contact_id, call_date, call_time, call_purpose, repeat_interval, status, notes } = request.body;
-  const CallSchedule = call_schedule.find((c) => c.id === parseInt(request.params.id));
-
-  if (!CallSchedule) {
-    return response.status(404).send({ message: "Call Schedule not found." });
-  }
-
-  Object.assign(CallSchedule, {
-    contact_id: contact_id || CallSchedule.contact_id, 
-    call_date: call_date || CallSchedule.call_date, 
-    call_time: call_time || CallSchedule.call_time, 
-    call_purpose: call_purpose || CallSchedule.call_purpose, 
-    repeat_interval: repeat_interval || CallSchedule.repeat_interval, 
-    status: status || CallSchedule.status, 
-    notes: notes || CallSchedule.notes,
-   });
-  return response.send(CallSchedule);
-}
-
-/**
- * Delete a CallSchedule by ID
- */
-async function deleteCallSchedule(request, response) {
-  const CallScheduleIndex = call_schedule.findIndex(
-    (c) => c.id === parseInt(request.params.id),
+async function updatecall_schedule(request, reply) {
+  const updatedcall_schedule = await call_schedulesDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (CallScheduleIndex === -1) {
-    return response.status(404).send({ message: "Call Schedule not found." });
+  if (!updatedcall_schedule) {
+    return reply.status(404).send({ message: "call_schedule not found." });
   }
-
-  call_schedule.splice(CallScheduleIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedcall_schedule);
 }
 
-// Routes Mapping
+async function deletecall_schedule(request, reply) {
+  const numRemoved = await call_schedulesDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "call_schedule not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/call_schedule", createCallSchedule);
-  app.get("/call_schedule", getCallSchedule);
-  app.get("/call_schedule/:id", getCallScheduleById);
-  app.put("/call_schedule/:id", updateCallSchedule);
-  app.delete("/call_schedule/:id", deleteCallSchedule);
+  app.post("/call_schedules", { schema: { body: call_scheduleSchema } }, createcall_schedule);
+  app.get("/call_schedules", getcall_schedules);
+  app.get(
+    "/call_schedules/:id",
+    { schema: { params: idParamSchema } },
+    getcall_scheduleById,
+  );
+  app.put(
+    "/call_schedules/:id",
+    { schema: { params: idParamSchema, body: call_scheduleSchema } },
+    updatecall_schedule,
+  );
+  app.delete(
+    "/call_schedules/:id",
+    { schema: { params: idParamSchema } },
+    deletecall_schedule,
+  );
 }
 
 exports.routes = routes;

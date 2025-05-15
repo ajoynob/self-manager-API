@@ -1,114 +1,86 @@
-// In-memory "database"
-let groceries = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const grocerieSchema = {
+  type: "object",
+  required: ["item_name", "quantity", "price"],
+  properties: {
+    item_name: { type: "string" },
+    quantity: { type: "string" },
+    price: { type: "string" },
+    purchase: { type: "string" },
+    purchase_date: { type: "string" },
+    category: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const groceriesDb = dbHelper("groceries");
 
 // Handlers
+async function creategrocerie(request, reply) {
+  const newgrocerie = await groceriesDb.insert(request.body);
+  return reply.status(201).send(newgrocerie);
+}
 
-/**
- * Create a new Groceries
- */
-async function createGroceries(request, response) {
-  const {
-    item_name,
-    quantity,
-    price,
-    purchased,
-    purchase_date,
-    category
-  } = request.body;
+async function getgroceries(request, reply) {
+  const groceries = await groceriesDb.findAll();
+  return reply.send(groceries);
+}
 
-  if (!item_name || !quantity || !price) {
-    return response
-      .status(400)
-      .send({ message: "Item Name, Quantity and Price are required." });
+async function getgrocerieById(request, reply) {
+  const grocerie = await groceriesDb.findById(request.params.id);
+  if (!grocerie) {
+    return reply.status(404).send({ message: "grocerie not found." });
   }
-
-  const newGroceries = {
-    id: idCounter++,
-    item_name,
-    quantity,
-    price,
-    purchased,
-    purchase_date,
-    category,
-  };
-
-  groceries.push(newGroceries);
-  return response.status(201).send(newGroceries);
+  return reply.send(grocerie);
 }
 
-/**
- * Get all groceries
- */
-async function getGroceries(request, response) {
-  return response.send(groceries);
-}
-
-/**
- * Get a single Groceries by ID
- */
-async function getGroceriesById(request, response) {
-  const Groceries = groceries.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Groceries) {
-    return response.status(404).send({ message: "Groceries not found." });
-  }
-
-  return response.send(Groceries);
-}
-
-/**
- * Update a Groceries by ID
- */
-async function updateGroceries(request, response) {
-  const {
-    item_name,
-    quantity,
-    price,
-    purchased,
-    purchase_date,
-    category
-  } = request.body;
-  const Groceries = groceries.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Groceries) {
-    return response.status(404).send({ message: "Groceries not found." });
-  }
-
-  Object.assign(Groceries, {
-    item_name: item_name || Groceries.item_name,
-    quantity: quantity || Groceries.quantity,
-    price: price || Groceries.price,
-    purchased: purchased || Groceries.purchased,
-    purchase_date: purchase_date || Groceries.purchase_date,
-    category: category || Groceries.category,
-  });
-  return response.send(Groceries);
-}
-
-/**
- * Delete a Groceries by ID
- */
-async function deleteGroceries(request, response) {
-  const GroceriesIndex = groceries.findIndex(
-    (c) => c.id === parseInt(request.params.id)
+async function updategrocerie(request, reply) {
+  const updatedgrocerie = await groceriesDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (GroceriesIndex === -1) {
-    return response.status(404).send({ message: "Groceries not found." });
+  if (!updatedgrocerie) {
+    return reply.status(404).send({ message: "grocerie not found." });
   }
-
-  groceries.splice(GroceriesIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedgrocerie);
 }
 
-// Routes Mapping
+async function deletegrocerie(request, reply) {
+  const numRemoved = await groceriesDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "grocerie not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/groceries", createGroceries);
-  app.get("/groceries", getGroceries);
-  app.get("/groceries/:id", getGroceriesById);
-  app.put("/groceries/:id", updateGroceries);
-  app.delete("/groceries/:id", deleteGroceries);
+  app.post("/groceries", { schema: { body: grocerieSchema } }, creategrocerie);
+  app.get("/groceries", getgroceries);
+  app.get(
+    "/groceries/:id",
+    { schema: { params: idParamSchema } },
+    getgrocerieById,
+  );
+  app.put(
+    "/groceries/:id",
+    { schema: { params: idParamSchema, body: grocerieSchema } },
+    updategrocerie,
+  );
+  app.delete(
+    "/groceries/:id",
+    { schema: { params: idParamSchema } },
+    deletegrocerie,
+  );
 }
 
 exports.routes = routes;

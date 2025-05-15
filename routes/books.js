@@ -1,102 +1,86 @@
-// In-memory "database"
-let books = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const bookSchema = {
+  type: "object",
+  required: ["title", "author", "genre"],
+  properties: {
+    title: { type: "string" },
+    author: { type: "string" },
+    genre: { type: "string" },
+    publication_date: { type: "string" },
+    status: { type: "string" },
+    notes: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const booksDb = dbHelper("books");
 
 // Handlers
+async function createbook(request, reply) {
+  const newbook = await booksDb.insert(request.body);
+  return reply.status(201).send(newbook);
+}
 
-/**
- * Create a new Book
- */
-async function createBook(request, response) {
-  const { title, author, genre, publication_date, status, notes } =
-    request.body;
+async function getbooks(request, reply) {
+  const books = await booksDb.findAll();
+  return reply.send(books);
+}
 
-  if (!title || !author || !genre) {
-    return response
-      .status(400)
-      .send({ message: "Title, Author, and Genre are required." });
+async function getbookById(request, reply) {
+  const book = await booksDb.findById(request.params.id);
+  if (!book) {
+    return reply.status(404).send({ message: "book not found." });
   }
-
-  const newBook = {
-    id: idCounter++,
-    title,
-    author,
-    genre,
-    publication_date,
-    status,
-    notes,
-  };
-
-  books.push(newBook);
-  return response.status(201).send(newBook);
+  return reply.send(book);
 }
 
-/**
- * Get all books
- */
-async function getBooks(request, response) {
-  return response.send(books);
-}
-
-/**
- * Get a single Book by ID
- */
-async function getBookById(request, response) {
-  const Book = books.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Book) {
-    return response.status(404).send({ message: "Book not found." });
-  }
-
-  return response.send(Book);
-}
-
-/**
- * Update a Book by ID
- */
-async function updateBook(request, response) {
-  const { title, author, genre, publication_date, status, notes } =
-    request.body;
-  const Book = books.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Book) {
-    return response.status(404).send({ message: "Books not found." });
-  }
-
-  Object.assign(Book, {
-    title: title || Book.title,
-    author: author || Book.author,
-    genre: genre || Book.genre,
-    publication_date: publication_date || Book.publication_date,
-    status: status || Book.status,
-    notes: notes || Book.notes,
-  });
-  return response.send(Book);
-}
-
-/**
- * Delete a Book by ID
- */
-async function deleteBook(request, response) {
-  const BookIndex = books.findIndex(
-    (c) => c.id === parseInt(request.params.id)
+async function updatebook(request, reply) {
+  const updatedbook = await booksDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (BookIndex === -1) {
-    return response.status(404).send({ message: "Books not found." });
+  if (!updatedbook) {
+    return reply.status(404).send({ message: "book not found." });
   }
-
-  books.splice(BookIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedbook);
 }
 
-// Routes Mapping
+async function deletebook(request, reply) {
+  const numRemoved = await booksDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "book not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/books", createBook);
-  app.get("/books", getBooks);
-  app.get("/books/:id", getBookById);
-  app.put("/books/:id", updateBook);
-  app.delete("/books/:id", deleteBook);
+  app.post("/books", { schema: { body: bookSchema } }, createbook);
+  app.get("/books", getbooks);
+  app.get(
+    "/books/:id",
+    { schema: { params: idParamSchema } },
+    getbookById,
+  );
+  app.put(
+    "/books/:id",
+    { schema: { params: idParamSchema, body: bookSchema } },
+    updatebook,
+  );
+  app.delete(
+    "/books/:id",
+    { schema: { params: idParamSchema } },
+    deletebook,
+  );
 }
 
 exports.routes = routes;
