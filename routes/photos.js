@@ -1,100 +1,86 @@
-// In-memory "database"
-let photos = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const photoSchema = {
+  type: "object",
+  required: ["title", "description", "url"],
+  properties: {
+    title: { type: "string" },
+    description: { type: "string" },
+    url: { type: "string"},
+    uploaded_by: { type: "string" },
+    uploaded_date: { type: "string" },
+    album: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const photosDb = dbHelper("photos");
 
 // Handlers
+async function createphoto(request, reply) {
+  const newphoto = await photosDb.insert(request.body);
+  return reply.status(201).send(newphoto);
+}
 
-/**
- * Create a new Photo
- */
-async function createPhoto(request, response) {
-  const { title, description, url, uploaded_by, uploaded_date, album } = request.body;
+async function getphotos(request, reply) {
+  const photos = await photosDb.findAll();
+  return reply.send(photos);
+}
 
-  if (!title || !description || !url) {
-    return response
-      .status(400)
-      .send({ message: "Title, Description, and URL are required." });
+async function getphotoById(request, reply) {
+  const photo = await photosDb.findById(request.params.id);
+  if (!photo) {
+    return reply.status(404).send({ message: "photo not found." });
   }
-
-  const newPhoto = {
-    id: idCounter++,
-    title,
-    description,
-    url,
-    uploaded_by,
-    uploaded_date,
-    album,
-  };
-
-  photos.push(newPhoto);
-  return response.status(201).send(newPhoto);
+  return reply.send(photo);
 }
 
-/**
- * Get all photos
- */
-async function getPhotos(request, response) {
-  return response.send(photos);
-}
-
-/**
- * Get a single Photo by ID
- */
-async function getPhotoById(request, response) {
-  const Photo = photos.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Photo) {
-    return response.status(404).send({ message: "Photo not found." });
-  }
-
-  return response.send(Photo);
-}
-
-/**
- * Update a Photo by ID
- */
-async function updatePhoto(request, response) {
-  const { title, description, url, uploaded_by, uploaded_date, album } = request.body;
-  const Photo = photos.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Photo) {
-    return response.status(404).send({ message: "Photo not found." });
-  }
-
-  Object.assign(Photo, {
-    title: title || Photo.title,
-    description: description || Photo.description,
-    url: url || Photo.url,
-    uploaded_by: uploaded_by || Photo.uploaded_by,
-    uploaded_date: uploaded_date || Photo.uploaded_date,
-    album: album || Photo.album,
-  });
-  return response.send(Photo);
-}
-
-/**
- * Delete a Photo by ID
- */
-async function deletePhoto(request, response) {
-  const PhotoIndex = photos.findIndex(
-    (c) => c.id === parseInt(request.params.id)
+async function updatephoto(request, reply) {
+  const updatedphoto = await photosDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (PhotoIndex === -1) {
-    return response.status(404).send({ message: "Photo not found." });
+  if (!updatedphoto) {
+    return reply.status(404).send({ message: "photo not found." });
   }
-
-  photos.splice(PhotoIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedphoto);
 }
 
-// Routes Mapping
+async function deletephoto(request, reply) {
+  const numRemoved = await photosDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "photo not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/photos", createPhoto);
-  app.get("/photos", getPhotos);
-  app.get("/photos/:id", getPhotoById);
-  app.put("/photos/:id", updatePhoto);
-  app.delete("/photos/:id", deletePhoto);
+  app.post("/photos", { schema: { body: photoSchema } }, createphoto);
+  app.get("/photos", getphotos);
+  app.get(
+    "/photos/:id",
+    { schema: { params: idParamSchema } },
+    getphotoById,
+  );
+  app.put(
+    "/photos/:id",
+    { schema: { params: idParamSchema, body: photoSchema } },
+    updatephoto,
+  );
+  app.delete(
+    "/photos/:id",
+    { schema: { params: idParamSchema } },
+    deletephoto,
+  );
 }
 
 exports.routes = routes;

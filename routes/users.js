@@ -1,91 +1,84 @@
-// In-memory "database"
-let users = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const userSchema = {
+  type: "object",
+  required: ["name", "password", "email"],
+  properties: {
+    name: { type: "string" },
+    password: { type: "string" },
+    email: { type: "string", format: "email" },
+    role: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const usersDb = dbHelper("users");
 
 // Handlers
+async function createuser(request, reply) {
+  const newuser = await usersDb.insert(request.body);
+  return reply.status(201).send(newuser);
+}
 
-/**
- * Create a new User
- */
-async function createUser(request, response) {
-  const { name, password, email, role } = request.body;
+async function getusers(request, reply) {
+  const users = await usersDb.findAll();
+  return reply.send(users);
+}
 
-  if (!name || !password || !email) {
-    return response
-      .status(400)
-      .send({ message: "Name, Password, and Email are required." });
+async function getuserById(request, reply) {
+  const user = await usersDb.findById(request.params.id);
+  if (!user) {
+    return reply.status(404).send({ message: "user not found." });
   }
-
-  const newUser = {
-    id: idCounter++,
-    name,
-    password,
-    email,
-    role,
-  };
-
-  users.push(newUser);
-  return response.status(201).send(newUser);
+  return reply.send(user);
 }
 
-/**
- * Get all users
- */
-async function getUsers(request, response) {
-  return response.send(users);
-}
-
-/**
- * Get a single User by ID
- */
-async function getUserById(request, response) {
-  const User = users.find((c) => c.id === parseInt(request.params.id));
-
-  if (!User) {
-    return response.status(404).send({ message: "User not found." });
-  }
-
-  return response.send(User);
-}
-
-/**
- * Update a User by ID
- */
-async function updateUser(request, response) {
-  const { name, password, email, role,} = request.body;
-  const User = users.find((c) => c.id === parseInt(request.params.id));
-
-  if (!User) {
-    return response.status(404).send({ message: "User not found." });
-  }
-
-  Object.assign(User, { name, password, email, role,});
-  return response.send(User);
-}
-
-/**
- * Delete a User by ID
- */
-async function deleteUser(request, response) {
-  const UserIndex = users.findIndex(
-    (c) => c.id === parseInt(request.params.id),
+async function updateuser(request, reply) {
+  const updateduser = await usersDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (UserIndex === -1) {
-    return response.status(404).send({ message: "User not found." });
+  if (!updateduser) {
+    return reply.status(404).send({ message: "user not found." });
   }
-
-  users.splice(UserIndex, 1);
-  return response.status(204).send();
+  return reply.send(updateduser);
 }
 
-// Routes Mapping
+async function deleteuser(request, reply) {
+  const numRemoved = await usersDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "user not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/users", createUser);
-  app.get("/users", getUsers);
-  app.get("/users/:id", getUserById);
-  app.put("/users/:id", updateUser);
-  app.delete("/users/:id", deleteUser);
+  app.post("/users", { schema: { body: userSchema } }, createuser);
+  app.get("/users", getusers);
+  app.get(
+    "/users/:id",
+    { schema: { params: idParamSchema } },
+    getuserById,
+  );
+  app.put(
+    "/users/:id",
+    { schema: { params: idParamSchema, body: userSchema } },
+    updateuser,
+  );
+  app.delete(
+    "/users/:id",
+    { schema: { params: idParamSchema } },
+    deleteuser,
+  );
 }
 
 exports.routes = routes;

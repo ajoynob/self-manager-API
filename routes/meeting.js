@@ -1,102 +1,87 @@
-// In-memory "database"
-let meeting = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const meetingSchema = {
+  type: "object",
+  required: ["title", "description", "date", "time"],
+  properties: {
+    title: { type: "string" },
+    description: { type: "string" },
+    date:{ type: "string"},
+    time: { type: "string" },
+    location: { type: "string" },
+    participants: { type: "string" },
+    status: { type: "string"},
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const meetingsDb = dbHelper("meetings");
 
 // Handlers
+async function createmeeting(request, reply) {
+  const newmeeting = await meetingsDb.insert(request.body);
+  return reply.status(201).send(newmeeting);
+}
 
-/**
- * Create a new Meeting
- */
-async function createMeeting(request, response) {
-  const { title, description, date, time, location, participants, status } = request.body;
+async function getmeetings(request, reply) {
+  const meetings = await meetingsDb.findAll();
+  return reply.send(meetings);
+}
 
-  if (!title || !description || !date || !time) {
-    return response
-      .status(400)
-      .send({ message: "Title, Description, Date and Time are required." });
+async function getmeetingById(request, reply) {
+  const meeting = await meetingsDb.findById(request.params.id);
+  if (!meeting) {
+    return reply.status(404).send({ message: "meeting not found." });
   }
-
-  const newMeeting = {
-    id: idCounter++,
-    title,
-    description,
-    date,
-    time,
-    location,
-    participants, 
-    status,
-  };
-
-  meeting.push(newMeeting);
-  return response.status(201).send(newMeeting);
+  return reply.send(meeting);
 }
 
-/**
- * Get all meeting
- */
-async function getMeeting(request, response) {
-  return response.send(meeting);
-}
-
-/**
- * Get a single Meeting by ID
- */
-async function getMeetingById(request, response) {
-  const Meeting = meeting.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Meeting) {
-    return response.status(404).send({ message: "Meeting not found." });
-  }
-
-  return response.send(Meeting);
-}
-
-/**
- * Update a Meeting by ID
- */
-async function updateMeeting(request, response) {
-  const { title, description, date, time, location, participants, status } = request.body;
-  const Meeting = meeting.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Meeting) {
-    return response.status(404).send({ message: "Meeting not found." });
-  }
-
-  Object.assign(Meeting, {
-     title: title || Meeting.title, 
-     description: description || Meeting.description, 
-     date: date || Meeting.date, 
-     time: time || Meeting.time, 
-     location: location || Meeting.location, 
-     participants: participants || Meeting.participants, 
-     status: status || Meeting.status,
-     });
-  return response.send(Meeting);
-}
-
-/**
- * Delete a Meeting by ID
- */
-async function deleteMeeting(request, response) {
-  const MeetingIndex = meeting.findIndex(
-    (c) => c.id === parseInt(request.params.id),
+async function updatemeeting(request, reply) {
+  const updatedmeeting = await meetingsDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (MeetingIndex === -1) {
-    return response.status(404).send({ message: "Meeting not found." });
+  if (!updatedmeeting) {
+    return reply.status(404).send({ message: "meeting not found." });
   }
-
-  meeting.splice(MeetingIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedmeeting);
 }
 
-// Routes Mapping
+async function deletemeeting(request, reply) {
+  const numRemoved = await meetingsDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "meeting not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/meeting", createMeeting);
-  app.get("/meeting", getMeeting);
-  app.get("/meeting/:id", getMeetingById);
-  app.put("/meeting/:id", updateMeeting);
-  app.delete("/meeting/:id", deleteMeeting);
+  app.post("/meetings", { schema: { body: meetingSchema } }, createmeeting);
+  app.get("/meetings", getmeetings);
+  app.get(
+    "/meetings/:id",
+    { schema: { params: idParamSchema } },
+    getmeetingById,
+  );
+  app.put(
+    "/meetings/:id",
+    { schema: { params: idParamSchema, body: meetingSchema } },
+    updatemeeting,
+  );
+  app.delete(
+    "/meetings/:id",
+    { schema: { params: idParamSchema } },
+    deletemeeting,
+  );
 }
 
 exports.routes = routes;

@@ -1,122 +1,88 @@
-// In-memory "database"
-let cloths = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const clothSchema = {
+  type: "object",
+  required: ["item_name", "size", "color"],
+  properties: {
+    item_name: { type: "string" },
+    size: { type: "string" },
+    color: { type: "string"},
+    material: { type: "string" },
+    purchase_date: { type: "string" },
+    price: { type: "string" },
+    catagory: { type: "string"},
+    notes: {type: "string"},
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const clothsDb = dbHelper("cloths");
 
 // Handlers
+async function createcloth(request, reply) {
+  const newcloth = await clothsDb.insert(request.body);
+  return reply.status(201).send(newcloth);
+}
 
-/**
- * Create a new Cloth
- */
-async function createCloth(request, response) {
-  const {
-    item_name,
-    size,
-    color,
-    material,
-    purchase_date,
-    price,
-    catagory,
-    notes
-  } = request.body;
+async function getcloths(request, reply) {
+  const cloths = await clothsDb.findAll();
+  return reply.send(cloths);
+}
 
-  if (!item_name || !size || !color) {
-    return response
-      .status(400)
-      .send({ message: "Item Name, Size, and Color are required." });
+async function getclothById(request, reply) {
+  const cloth = await clothsDb.findById(request.params.id);
+  if (!cloth) {
+    return reply.status(404).send({ message: "cloth not found." });
   }
-
-  const newCloth = {
-    id: idCounter++,
-    item_name,
-    size,
-    color,
-    material,
-    purchase_date,
-    price,
-    catagory,
-    notes,
-  };
-
-  cloths.push(newCloth);
-  return response.status(201).send(newCloth);
+  return reply.send(cloth);
 }
 
-/**
- * Get all cloths
- */
-async function getCloths(request, response) {
-  return response.send(cloths);
-}
-
-/**
- * Get a single Cloth by ID
- */
-async function getClothById(request, response) {
-  const Cloth = cloths.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Cloth) {
-    return response.status(404).send({ message: "Cloth not found." });
-  }
-
-  return response.send(Cloth);
-}
-
-/**
- * Update a Cloth by ID
- */
-async function updateCloth(request, response) {
-  const {
-    item_name,
-    size,
-    color,
-    material,
-    purchase_date,
-    price,
-    catagory,
-    notes
-  } = request.body;
-  const Cloth = cloths.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Cloth) {
-    return response.status(404).send({ message: "Cloth not found." });
-  }
-
-  Object.assign(Cloth, {
-    item_name: item_name || Cloth.item_name,
-    size: size || Cloth.size,
-    color: color || Cloth.color,
-    material: material || Cloth.material,
-    purchase_date: purchase_date || Cloth.purchase_date,
-    price: price || Cloth.price,
-    catagory: catagory || Cloth.catagory,
-    notes: notes || Cloth.notes,
-  });
-  return response.send(Cloth);
-}
-
-/**
- * Delete a Cloth by ID
- */
-async function deleteCloth(request, response) {
-  const ClothIndex = cloths.findIndex(
-    (c) => c.id === parseInt(request.params.id)
+async function updatecloth(request, reply) {
+  const updatedcloth = await clothsDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (ClothIndex === -1) {
-    return response.status(404).send({ message: "Cloth not found." });
+  if (!updatedcloth) {
+    return reply.status(404).send({ message: "cloth not found." });
   }
-
-  cloths.splice(ClothIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedcloth);
 }
 
-// Routes Mapping
+async function deletecloth(request, reply) {
+  const numRemoved = await clothsDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "cloth not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/cloths", createCloth);
-  app.get("/cloths", getCloths);
-  app.get("/cloths/:id", getClothById);
-  app.put("/cloths/:id", updateCloth);
-  app.delete("/cloths/:id", deleteCloth);
+  app.post("/cloths", { schema: { body: clothSchema } }, createcloth);
+  app.get("/cloths", getcloths);
+  app.get(
+    "/cloths/:id",
+    { schema: { params: idParamSchema } },
+    getclothById,
+  );
+  app.put(
+    "/cloths/:id",
+    { schema: { params: idParamSchema, body: clothSchema } },
+    updatecloth,
+  );
+  app.delete(
+    "/cloths/:id",
+    { schema: { params: idParamSchema } },
+    deletecloth,
+  );
 }
 
 exports.routes = routes;

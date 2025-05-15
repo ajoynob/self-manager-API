@@ -1,100 +1,86 @@
-// In-memory "database"
-let researches = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const researchSchema = {
+  type: "object",
+  required: ["title", "field", "description"],
+  properties: {
+    title: { type: "string" },
+    field: { type: "string" },
+    description: { type: "string"},
+    start_date: { type: "string" },
+    end_date: { type: "string" },
+    status: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const researchesDb = dbHelper("researches");
 
 // Handlers
+async function createresearch(request, reply) {
+  const newresearch = await researchesDb.insert(request.body);
+  return reply.status(201).send(newresearch);
+}
 
-/**
- * Create a new Researches
- */
-async function createResearches(request, response) {
-  const { title, field, description, start_date, end_date, status } = request.body;
+async function getresearches(request, reply) {
+  const researches = await researchesDb.findAll();
+  return reply.send(researches);
+}
 
-  if (!title || !field || !description) {
-    return response
-      .status(400)
-      .send({ message: "Title, Field, and Description are required." });
+async function getresearchById(request, reply) {
+  const research = await researchesDb.findById(request.params.id);
+  if (!research) {
+    return reply.status(404).send({ message: "research not found." });
   }
-
-  const newResearches = {
-    id: idCounter++,
-    title,
-    field,
-    description,
-    start_date,
-    end_date,
-    status,
-  };
-
-  researches.push(newResearches);
-  return response.status(201).send(newResearches);
+  return reply.send(research);
 }
 
-/**
- * Get all researches
- */
-async function getResearches(request, response) {
-  return response.send(researches);
-}
-
-/**
- * Get a single Researches by ID
- */
-async function getResearchesById(request, response) {
-  const Researches = researches.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Researches) {
-    return response.status(404).send({ message: "Researches not found." });
-  }
-
-  return response.send(Researches);
-}
-
-/**
- * Update a Researches by ID
- */
-async function updateResearches(request, response) {
-  const { title, field, description, start_date, end_date, status } = request.body;
-  const Researches = researches.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Researches) {
-    return response.status(404).send({ message: "Researches not found." });
-  }
-
-  Object.assign(Researches, {
-    title: title || Researches.title,
-    field: field || Researches.field,
-    description: description || Researches.description,
-    start_date: start_date || Researches.start_date,
-    end_date: end_date || Researches.end_date,
-    status: status || Researches.status,
-  });
-  return response.send(Researches);
-}
-
-/**
- * Delete a Researches by ID
- */
-async function deleteResearches(request, response) {
-  const ResearchesIndex = researches.findIndex(
-    (c) => c.id === parseInt(request.params.id)
+async function updateresearch(request, reply) {
+  const updatedresearch = await researchesDb.update(
+    request.params.id,
+    request.body,
   );
-
-  if (ResearchesIndex === -1) {
-    return response.status(404).send({ message: "Researches not found." });
+  if (!updatedresearch) {
+    return reply.status(404).send({ message: "research not found." });
   }
-
-  researches.splice(ResearchesIndex, 1);
-  return response.status(204).send();
+  return reply.send(updatedresearch);
 }
 
-// Routes Mapping
+async function deleteresearch(request, reply) {
+  const numRemoved = await researchesDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "research not found." });
+  }
+  return reply.status(204).send();
+}
+
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/researches", createResearches);
-  app.get("/researches", getResearches);
-  app.get("/researches/:id", getResearchesById);
-  app.put("/researches/:id", updateResearches);
-  app.delete("/researches/:id", deleteResearches);
+  app.post("/researches", { schema: { body: researchSchema } }, createresearch);
+  app.get("/researches", getresearches);
+  app.get(
+    "/researches/:id",
+    { schema: { params: idParamSchema } },
+    getresearchById,
+  );
+  app.put(
+    "/researches/:id",
+    { schema: { params: idParamSchema, body: researchSchema } },
+    updateresearch,
+  );
+  app.delete(
+    "/researches/:id",
+    { schema: { params: idParamSchema } },
+    deleteresearch,
+  );
 }
 
 exports.routes = routes;

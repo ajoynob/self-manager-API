@@ -1,96 +1,85 @@
-// In-memory "database"
-let todo = [];
-let idCounter = 1;
+const dbHelper = require("../dbHelper");
+
+// Schemas for validation
+const todoSchema = {
+  type: "object",
+  required: ["title", "description", "due_date"],
+  properties: {
+    title: { type: "string" },
+    description: { type: "string" },
+    due_date: { type: "string"},
+    priority: { type: "string" },
+    status: { type: "string" },
+  },
+};
+
+const idParamSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+  },
+  required: ["id"],
+};
+
+const todosDb = dbHelper("todos");
 
 // Handlers
+async function createtodo(request, reply) {
+  const newtodo = await todosDb.insert(request.body);
+  return reply.status(201).send(newtodo);
+}
 
-/**
- * Create a new Todo
- */
-async function createTodo(request, response) {
-  const { title, description, due_date, priority, status } = request.body;
+async function gettodos(request, reply) {
+  const todos = await todosDb.findAll();
+  return reply.send(todos);
+}
 
-  if (!title || !description || !due_date) {
-    return response
-      .status(400)
-      .send({ message: "Title, Description, and Due Date are required." });
+async function gettodoById(request, reply) {
+  const todo = await todosDb.findById(request.params.id);
+  if (!todo) {
+    return reply.status(404).send({ message: "todo not found." });
   }
-
-  const newTodo = {
-    id: idCounter++,
-    title,
-    description,
-    due_date,
-    priority,
-    status,
-  };
-
-  todo.push(newTodo);
-  return response.status(201).send(newTodo);
+  return reply.send(todo);
 }
 
-/**
- * Get all todo
- */
-async function getTodo(request, response) {
-  return response.send(todo);
-}
-
-/**
- * Get a single Todo by ID
- */
-async function getTodoById(request, response) {
-  const Todo = todo.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Todo) {
-    return response.status(404).send({ message: "Todo not found." });
+async function updatetodo(request, reply) {
+  const updatedtodo = await todosDb.update(
+    request.params.id,
+    request.body,
+  );
+  if (!updatedtodo) {
+    return reply.status(404).send({ message: "todo not found." });
   }
-
-  return response.send(Todo);
+  return reply.send(updatedtodo);
 }
 
-/**
- * Update a Todo by ID
- */
-async function updateTodo(request, response) {
-  const { title, description, due_date, priority, status } = request.body;
-  const Todo = todo.find((c) => c.id === parseInt(request.params.id));
-
-  if (!Todo) {
-    return response.status(404).send({ message: "Todo not found." });
+async function deletetodo(request, reply) {
+  const numRemoved = await todosDb.delete(request.params.id);
+  if (numRemoved === 0) {
+    return reply.status(404).send({ message: "todo not found." });
   }
-
-  Object.assign(Todo, {
-    title: title || Todo.title,
-    description: description || Todo.description,
-    due_date: due_date || Todo.due_date,
-    priority: priority || Todo.priority,
-    status: status || Todo.status,
-  });
-  return response.send(Todo);
+  return reply.status(204).send();
 }
 
-/**
- * Delete a Todo by ID
- */
-async function deleteTodo(request, response) {
-  const TodoIndex = todo.findIndex((c) => c.id === parseInt(request.params.id));
-
-  if (TodoIndex === -1) {
-    return response.status(404).send({ message: "Todo not found." });
-  }
-
-  todo.splice(TodoIndex, 1);
-  return response.status(204).send();
-}
-
-// Routes Mapping
+// Routes Mapping with validation schemas
 function routes(app) {
-  app.post("/todo", createTodo);
-  app.get("/todo", getTodo);
-  app.get("/todo/:id", getTodoById);
-  app.put("/todo/:id", updateTodo);
-  app.delete("/todo/:id", deleteTodo);
+  app.post("/todos", { schema: { body: todoSchema } }, createtodo);
+  app.get("/todos", gettodos);
+  app.get(
+    "/todos/:id",
+    { schema: { params: idParamSchema } },
+    gettodoById,
+  );
+  app.put(
+    "/todos/:id",
+    { schema: { params: idParamSchema, body: todoSchema } },
+    updatetodo,
+  );
+  app.delete(
+    "/todos/:id",
+    { schema: { params: idParamSchema } },
+    deletetodo,
+  );
 }
 
 exports.routes = routes;
