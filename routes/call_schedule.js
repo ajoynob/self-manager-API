@@ -11,6 +11,7 @@ const call_scheduleSchema = {
     call_purpose: { type: "string" },
     repeat_interval: { type: "string" },
     status: { type: "string" },
+    notes: { type: "string" },
   },
 };
 

@@ -13,6 +13,7 @@ const call_scheduleSchema = {
     call_purpose: { type: "string" },
     repeat_interval: { type: "string" },
     status: { type: "string" },
+    notes: { type: "string" },
   },
 };
 
@@ -30,7 +31,7 @@ const idParamSchema = {
  * Create a new call_schedule
  */
 async function createcall_schedule(request, response) {
-  const { name, call_date, call_time, call_purpose, repeat_interval, status } =
+  const { name, call_date, call_time, call_purpose, repeat_interval, status, notes } =
     request.body;
 
   if (!name || !call_date || !call_time) {
@@ -47,6 +48,7 @@ async function createcall_schedule(request, response) {
     call_purpose,
     repeat_interval,
     status,
+    notes,
   };
 
   call_schedules.push(newcall_schedule);
@@ -79,7 +81,7 @@ async function getcall_scheduleById(request, response) {
  * Update a call_schedule by ID
  */
 async function updatecall_schedule(request, response) {
-  const { name, call_date, call_time, call_purpose, repeat_interval, status } =
+  const { name, call_date, call_time, call_purpose, repeat_interval, status, notes } =
     request.body;
   const call_schedule = call_schedules.find(
     (c) => c.id === parseInt(request.params.id)
@@ -96,6 +98,7 @@ async function updatecall_schedule(request, response) {
     call_purpose: call_purpose || call_schedule.call_purpose,
     repeat_interval: repeat_interval || call_schedule.repeat_interval,
     status: status || call_schedule.status,
+    notes: notes || call_schedule.notes,
   });
   return response.send(call_schedule);
 }
