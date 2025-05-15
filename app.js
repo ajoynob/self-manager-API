@@ -1,6 +1,6 @@
 //Import the Fastify framework and others library
 const Fastify = require("fastify");
-const contacts = require("./routes/contacts2");
+const contacts = require("./routes/contacts");
 const users = require("./routes/users");
 const call_schedule = require("./routes/call_schedule");
 const books = require("./routes/books");
