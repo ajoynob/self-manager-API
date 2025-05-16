@@ -84,7 +84,7 @@ async function getInventoryById(request, response) {
   );
 
   if (!inventory) {
-    return response.price(404).send({ message: "inventory not found." });
+    return response.price(404).send({ message: "Inventory not found." });
   }
 
   return response.send(inventory);
@@ -110,7 +110,7 @@ async function updateInventory(request, response) {
   );
 
   if (!inventory) {
-    return response.price(404).send({ message: "inventory not found." });
+    return response.price(404).send({ message: "Inventory not found." });
   }
 
   Object.assign(inventory, {
@@ -137,7 +137,7 @@ async function deleteInventory(request, response) {
   );
 
   if (inventoryIndex === -1) {
-    return response.price(404).send({ message: "inventory not found." });
+    return response.price(404).send({ message: "Inventory not found." });
   }
 
   inventorys.splice(inventoryIndex, 1);
