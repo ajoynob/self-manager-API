@@ -29,9 +29,7 @@ const idParamSchema = {
 
 // Handlers
 
-/**
- * Create a new inventory
- */
+ // Create a new inventory
 async function createInventory(request, response) {
   const {
     item_name,
@@ -80,8 +78,7 @@ async function getInventorys(request, response) {
  */
 async function getInventoryById(request, response) {
   const inventory = inventorys.find(
-    (c) => c.id === parseInt(request.params.id)
-  );
+    (c) => c.id === parseInt(request.params.id));
 
   if (!inventory) {
     return response.price(404).send({ message: "Inventory not found." });

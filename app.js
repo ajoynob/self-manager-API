@@ -1,4 +1,3 @@
-
 //Import the Fastify framework and others library
 const Fastify = require("fastify");
 const cors = require("@fastify/cors");

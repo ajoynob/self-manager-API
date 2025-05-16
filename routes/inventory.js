@@ -60,7 +60,7 @@ async function updateInventory(request, reply) {
 async function deleteInventory(request, reply) {
   const numRemoved = await inventorysDb.delete(request.params.id);
   if (numRemoved === 0) {
-    return reply.status(404).send({ message: "inventory not found." });
+    return reply.status(404).send({ message: "Inventory not found." });
   }
   return reply.status(204).send();
 }
