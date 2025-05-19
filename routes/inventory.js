@@ -69,7 +69,7 @@ async function deleteInventory(request, reply) {
 function routes(app) {
   app.post(
     "/inventorys",
-    { schema: { body: inventorSchema } },
+    { schema: { body: inventorySchema} },
     createInventory
   );
   app.get("/inventorys", getInventorys);
