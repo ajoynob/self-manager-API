@@ -1,6 +1,9 @@
 //Import the Fastify framework and others library
 const Fastify = require("fastify");
 const cors = require("@fastify/cors");
+const { verify } = require("./jwtHelper");
+
+// Route Modules
 const contacts = require("./routes/contacts");
 const users = require("./routes/users");
 const call_schedule = require("./routes/call_schedule");
@@ -23,6 +26,24 @@ app.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed HTTP methods
   // allowedHeaders: ['Content-Type', 'Authorization'],    // Allowed headers
   // credentials: true                                     // Support credentials
+});
+
+// JWT auth middleware (protect everything after public routes)
+app.addHook("onRequest", async (request, reply) => {
+
+  if (request.url === "/login" || request.url === "/register") {
+    return; // Skip auth for login and register routes
+  }
+
+  // Check for JWT token in the Authorization header
+  try {
+    const auth = request.headers.authorization;
+    const token = auth && auth.split(" ")[1];
+    if (!token) throw new Error("Token missing");
+    request.user = verify(token); // Will throw if invalid
+  } catch (err) {
+    return reply.status(401).send({ message: "Unauthorized" });
+  }
 });
 
 // Register the contacts routes
